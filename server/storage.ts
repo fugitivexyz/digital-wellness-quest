@@ -597,10 +597,15 @@ export class DatabaseStorage implements IStorage {
           }
             
           case 'all_topics': {
-            const uniqueTopics = Array.from(new Set(questions.map(q => q.topic)));
-            const answeredTopics = Array.from(new Set(
-              userProgressData.filter(p => p.answeredCorrectly).map(p => p.topic)
-            ));
+            // Convert Set to Array for TypeScript compatibility
+            const topicsArray = questions.map(q => q.topic);
+            const uniqueTopics = [...new Set(topicsArray)];
+            
+            const answeredTopicsArray = userProgressData
+              .filter(p => p.answeredCorrectly)
+              .map(p => p.topic);
+            const answeredTopics = [...new Set(answeredTopicsArray)];
+            
             shouldUnlock = uniqueTopics.every(topic => answeredTopics.includes(topic));
             break;
           }
@@ -655,10 +660,13 @@ export class DatabaseStorage implements IStorage {
 
   async purchaseAvatar(userId: number, avatarId: string): Promise<void> {
     // Check if avatar already owned
-    const [existing] = await db.execute(sql`
+    const result = await db.execute(sql`
       SELECT * FROM ${sql.identifier(this.userAvatarsTable)}
       WHERE user_id = ${userId} AND avatar_id = ${avatarId}
     `);
+    
+    // Check if we have any rows in the result
+    const existing = result.rows && result.rows.length > 0;
     
     if (!existing) {
       await db.execute(sql`
@@ -670,10 +678,13 @@ export class DatabaseStorage implements IStorage {
 
   async selectAvatar(userId: number, avatarId: string): Promise<void> {
     // Check if avatar is owned
-    const [existing] = await db.execute(sql`
+    const result = await db.execute(sql`
       SELECT * FROM ${sql.identifier(this.userAvatarsTable)}
       WHERE user_id = ${userId} AND avatar_id = ${avatarId}
     `);
+    
+    // Check if we have any rows in the result
+    const existing = result.rows && result.rows.length > 0;
     
     if (!existing) {
       throw new Error("Avatar not owned");

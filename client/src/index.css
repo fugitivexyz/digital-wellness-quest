@@ -8,6 +8,69 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-[#f8f7f2] text-black;
+  }
+}
+
+/* CyberQuest Challenge custom styles based on new design */
+@layer components {
+  .game-container {
+    @apply bg-[#f8f7f2] min-h-screen;
+  }
+  
+  .navbar {
+    @apply bg-black text-white p-4 flex justify-between items-center;
+  }
+  
+  .page-title {
+    @apply text-3xl font-bold text-black;
+  }
+  
+  .button-primary {
+    @apply bg-[#F8D000] text-black font-medium px-6 py-3 border-2 border-black hover:opacity-90;
+  }
+  
+  .button-secondary {
+    @apply bg-white text-black font-medium px-6 py-3 border-2 border-black hover:bg-gray-100;
+  }
+  
+  .button-tab {
+    @apply border-2 border-black px-4 py-2;
+  }
+  
+  .button-tab.active {
+    @apply bg-[#F8D000];
+  }
+  
+  .card {
+    @apply bg-white border-2 border-black p-4 mb-4;
+  }
+  
+  .game-option {
+    @apply bg-white border-2 border-black p-4 mb-3 hover:bg-gray-100 cursor-pointer;
+  }
+  
+  .game-header {
+    @apply flex justify-between items-center mb-4;
+  }
+  
+  .avatar {
+    @apply rounded-full border-2 border-black;
+  }
+  
+  .progress-bar {
+    @apply bg-gray-200 h-2 w-full;
+  }
+  
+  .progress-fill {
+    @apply bg-[#F8D000] h-full;
+  }
+  
+  .leaderboard-item {
+    @apply flex justify-between items-center bg-white border-2 border-black p-3 mb-2;
+  }
+  
+  .lifeline-button {
+    @apply border-2 border-black p-2 flex items-center justify-center;
   }
 }

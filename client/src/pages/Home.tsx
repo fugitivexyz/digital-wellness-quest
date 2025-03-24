@@ -38,28 +38,27 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-white">
+    <div className="game-container">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <Header userProfile={user} />
         
         {!isAuthenticated && !isLoading ? (
-          <div className="bg-gray-800 rounded-xl p-8 mb-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Welcome to CyberQuest Challenge!</h2>
+          <div className="card text-center">
+            <h2 className="page-title mb-4">Welcome to CyberQuest Challenge!</h2>
             <p className="mb-6">Test your cybersecurity knowledge and earn rewards.</p>
             <div className="flex justify-center gap-4">
-              <Button 
+              <button 
                 onClick={() => navigate("/login")}
-                className="bg-primary hover:bg-purple-700"
+                className="button-primary"
               >
                 Login
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => navigate("/register")}
-                variant="outline"
-                className="bg-transparent border-primary text-white hover:bg-primary"
+                className="button-secondary"
               >
                 Register
-              </Button>
+              </button>
             </div>
           </div>
         ) : (
@@ -69,17 +68,17 @@ export default function Home() {
               <GameModesSelector onSelectMode={handleStartGame} />
               
               {/* Game Information */}
-              <div className="bg-gray-800 rounded-xl p-6 mb-6">
+              <div className="card">
                 <h2 className="text-xl font-semibold mb-4">About CyberQuest Challenge</h2>
-                <p className="text-gray-300 mb-4">
+                <p className="mb-4">
                   Test your cybersecurity knowledge with interactive quizzes on various topics including phishing, 
                   password security, privacy settings, and more. Learn essential online safety skills while competing 
                   for points and achievements.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="bg-gray-900 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-400 mb-2">How to Play</h3>
-                    <ul className="text-sm text-gray-300 list-disc pl-5 space-y-1">
+                  <div className="card">
+                    <h3 className="font-medium mb-2">How to Play</h3>
+                    <ul className="text-sm list-disc pl-5 space-y-1">
                       <li>Select a game mode</li>
                       <li>Answer questions within time limit</li>
                       <li>Use lifelines when needed</li>
@@ -87,9 +86,9 @@ export default function Home() {
                       <li>Level up your cybersecurity expertise</li>
                     </ul>
                   </div>
-                  <div className="bg-gray-900 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-400 mb-2">Lifelines</h3>
-                    <ul className="text-sm text-gray-300 list-disc pl-5 space-y-1">
+                  <div className="card">
+                    <h3 className="font-medium mb-2">Lifelines</h3>
+                    <ul className="text-sm list-disc pl-5 space-y-1">
                       <li><span className="font-medium">50:50</span> - Removes two incorrect answers</li>
                       <li><span className="font-medium">Ask Expert</span> - Get advice from security expert</li>
                       <li>Use lifelines wisely - they reduce points earned</li>
@@ -97,15 +96,15 @@ export default function Home() {
                     </ul>
                   </div>
                 </div>
-                <Button 
+                <button 
                   onClick={() => handleStartGame(GameMode.SoloQuest, GameDifficulty.Beginner, null)}
-                  className="w-full bg-primary hover:bg-purple-700 font-medium"
+                  className="button-primary w-full flex items-center justify-center"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                   </svg>
                   Start Quiz
-                </Button>
+                </button>
               </div>
             </div>
             
