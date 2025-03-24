@@ -1,9 +1,16 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { questions, achievements, avatars } from "@shared/data/questions";
+
+// Extend the Express Request type to include session
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+  }
+}
 
 const loginSchema = z.object({
   username: z.string().min(3),
