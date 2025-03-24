@@ -17,19 +17,19 @@ export default function Achievements({ achievements }: AchievementsProps) {
   const lockedAchievements = sortedAchievements.filter(a => !a.unlocked);
 
   return (
-    <div className="bg-gray-800 rounded-xl overflow-hidden shadow-lg">
-      <div className="p-6">
+    <div className="card">
+      <div className="py-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold text-lg">Achievements</h2>
-          <button className="text-xs text-blue-400 hover:underline">View All</button>
+          <button className="text-xs font-medium hover:underline">View All</button>
         </div>
         
         <div className="space-y-4">
           {/* Unlocked Achievements (show first 2) */}
           {unlockedAchievements.slice(0, 2).map(achievement => (
-            <div key={achievement.id} className="bg-gray-900 p-4 rounded-lg flex items-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-700 flex items-center justify-center mr-4 flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div key={achievement.id} className="card flex items-center">
+              <div className="w-12 h-12 border-2 border-black bg-[#F8D000] flex items-center justify-center mr-4 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   {achievement.icon === 'shield-alt' && <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />}
                   {achievement.icon === 'fire' && (
                     <>
@@ -66,30 +66,30 @@ export default function Achievements({ achievements }: AchievementsProps) {
               </div>
               <div>
                 <h3 className="font-medium">{achievement.name}</h3>
-                <p className="text-xs text-gray-400">{achievement.description}</p>
+                <p className="text-xs text-gray-600">{achievement.description}</p>
               </div>
               <div className="ml-auto">
-                <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">+{achievement.reward.xp} XP</span>
+                <span className="text-xs bg-[#F8D000] text-black px-2 py-1 border border-black">+{achievement.reward.xp} XP</span>
               </div>
             </div>
           ))}
           
           {/* Locked Achievements (show first 2) */}
           {lockedAchievements.slice(0, 2).map(achievement => (
-            <div key={achievement.id} className="bg-gray-900 p-4 rounded-lg flex items-center opacity-50">
-              <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center mr-4 flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div key={achievement.id} className="card flex items-center opacity-50">
+              <div className="w-12 h-12 border-2 border-black bg-white flex items-center justify-center mr-4 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
               </div>
               <div>
                 <h3 className="font-medium">{achievement.name}</h3>
-                <p className="text-xs text-gray-400">{achievement.description}</p>
+                <p className="text-xs text-gray-600">{achievement.description}</p>
               </div>
               <div className="ml-auto">
                 {/* For achievement progress we'd need more data from the server */}
-                <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded-full">Locked</span>
+                <span className="text-xs bg-white text-black px-2 py-1 border border-black">Locked</span>
               </div>
             </div>
           ))}
