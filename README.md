@@ -64,7 +64,9 @@ Use these demo accounts to explore the app:
 
 ## 📱 Screenshots
 
-*Coming soon*
+![Digital Wellness Quest Home Screen](https://github.com/fugitivexyz/digital-wellness-quest/raw/main/screenshots/home-screen.png)
+
+*More screenshots coming soon*
 
 ## 🤝 Contributing
 
