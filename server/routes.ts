@@ -1,360 +1,564 @@
-import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { z } from "zod";
-import { insertUserSchema } from "@shared/schema";
-import { questions, achievements, avatars } from "@shared/data/questions";
+/**
+ * MOCK ROUTES FOR TESTING
+ * 
+ * Instructions:
+ * 1. Rename this file to routes.ts to use the mock routes
+ * 2. Note: This is for testing only and won't persist data
+ */
 
-// Extend the Express Request type to include session
+import express, { type Request, Response } from "express";
+import { Server, createServer } from "http";
+import { db } from "./db";
+import { users, userLifelines, gameProgress, userAchievements } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import * as crypto from "crypto";
+
+// Simple hash function for passwords (NOT FOR PRODUCTION)
+function simpleHash(str: string): string {
+  // Use SHA-256 for consistency with demo data
+  return crypto.createHash('sha256').update(str).digest('hex');
+}
+
+// Sample questions data
+const QUESTIONS = [
+  {
+    id: "q1",
+    question: "What is the most common type of attack that involves sending deceptive emails?",
+    options: ["Phishing", "DDoS", "SQL Injection", "Cross-site Scripting"],
+    correctOption: 0,
+    explanation: "Phishing is a type of social engineering attack that involves sending fraudulent messages that appear to come from a trusted source.",
+    difficulty: "beginner",
+    topic: "Social Engineering",
+    points: 10
+  },
+  {
+    id: "q2",
+    question: "Which encryption algorithm is considered outdated and insecure?",
+    options: ["AES-256", "RSA-2048", "MD5", "Blowfish"],
+    correctOption: 2,
+    explanation: "MD5 is a cryptographic hash function that is now considered cryptographically broken and unsuitable for further use.",
+    difficulty: "intermediate",
+    topic: "Cryptography",
+    points: 15
+  },
+  {
+    id: "q3",
+    question: "What type of attack floods a network with traffic to make a service unavailable?",
+    options: ["Man-in-the-Middle", "DDoS", "SQL Injection", "Zero-day Exploit"],
+    correctOption: 1,
+    explanation: "A Distributed Denial of Service (DDoS) attack attempts to make a service unavailable by overwhelming it with traffic from multiple sources.",
+    difficulty: "beginner",
+    topic: "Network Security",
+    points: 10
+  }
+];
+
+// Mock lifelines data
+const MOCK_LIFELINES = {
+  fiftyFifty: 3,
+  askExpert: 2,
+  lastRefreshedAt: new Date()
+};
+
+// This ensures TypeScript recognizes the session properties we add
 declare module 'express-session' {
   interface SessionData {
-    userId: number;
+    userId?: number;
   }
 }
 
-const loginSchema = z.object({
-  username: z.string().min(3),
-  password: z.string().min(6),
-});
+export async function registerRoutes(app: express.Express): Promise<Server> {
+  // Create an HTTP server for the Express app
+  const server = createServer(app);
 
-const answerQuestionSchema = z.object({
-  questionId: z.string(),
-  selectedOptionIndex: z.number().int().min(0).max(3),
-  timeRemaining: z.number().int().min(0),
-  usedLifelines: z.object({
-    fiftyFifty: z.boolean(),
-    askExpert: z.boolean(),
-  }),
-});
-
-export async function registerRoutes(app: Express): Promise<Server> {
-  const httpServer = createServer(app);
-
-  // Auth routes
-  app.post("/api/register", async (req, res) => {
+  // Auth routes - /api/ endpoints
+  app.post("/api/register", async (req: Request, res: Response) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      // Log the request body for debugging
+      console.log('Registration request:', JSON.stringify(req.body));
       
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        console.log('Missing username or password');
+        return res.status(400).json({ message: "Username and password are required" });
       }
       
-      const user = await storage.createUser(userData);
+      // Check if username exists
+      const selectDb = await db.select("users");
+      const existingUser = await selectDb.from().where({username}).limit(1);
       
-      // Create initial lifelines
-      await storage.createLifelines(user.id);
+      if (existingUser.length > 0) {
+        console.log('Username already exists:', username);
+        return res.status(409).json({ message: "Username already exists" });
+      }
       
-      // Return user without password
-      const { password, ...userWithoutPassword } = user;
+      // Hash password
+      const hashedPassword = simpleHash(password);
       
-      req.session!.userId = user.id;
-      res.status(201).json(userWithoutPassword);
+      // Insert user
+      const insertDb = await db.insert("users");
+      const newUser = await insertDb.values({
+        username,
+        password: hashedPassword,
+        level: 1,
+        experience: 0,
+        coins: 0,
+        avatarId: "default",
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        stats: JSON.stringify({
+          questionsAnswered: 0,
+          correctAnswers: 0,
+          highestStreak: 0,
+          topicsExpertise: {}
+        })
+      }).returning();
+      
+      console.log('User created:', username);
+      
+      // Create initial lifelines for the user
+      if (newUser && newUser.length > 0) {
+        const insertLifelineDb = await db.insert("userLifelines");
+        await insertLifelineDb.values({
+          userId: newUser[0].id,
+          fiftyFifty: 3,
+          askExpert: 3,
+          lastRefreshedAt: new Date().toISOString()
+        }).execute();
+        console.log('Lifelines created for user:', username);
+      }
+      
+      return res.status(201).json({ message: "User registered successfully" });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Failed to register user" });
+      console.error("Registration error:", error);
+      return res.status(500).json({ message: "Error registering user" });
     }
   });
-
-  app.post("/api/login", async (req, res) => {
+  
+  app.post("/api/login", async (req: Request, res: Response) => {
     try {
-      const credentials = loginSchema.parse(req.body);
+      // Log the request body for debugging
+      console.log('Login request:', JSON.stringify(req.body));
       
-      const user = await storage.getUserByUsername(credentials.username);
-      if (!user || user.password !== credentials.password) {
-        return res.status(401).json({ message: "Invalid username or password" });
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        console.log('Missing username or password');
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      // Find user
+      const selectDb = await db.select("users");
+      const foundUsers = await selectDb.from().where({username}).limit(1);
+      
+      if (foundUsers.length === 0) {
+        console.log('User not found:', username);
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      const user = foundUsers[0];
+      
+      // Special handling for demo users
+      const isDemoUser = ["demo", "beginner", "expert"].includes(username);
+      let isPasswordValid = false;
+      
+      if (isDemoUser && password === "password") {
+        isPasswordValid = true;
+        console.log('Demo user login bypass activated for:', username);
+      } else {
+        // Regular password comparison
+        const hashedPassword = simpleHash(password);
+        console.log('Debug - Stored hash:', user.password);
+        console.log('Debug - Calculated hash:', hashedPassword);
+        isPasswordValid = user.password === hashedPassword;
+      }
+      
+      if (!isPasswordValid) {
+        console.log('Invalid password for user:', username);
+        return res.status(401).json({ message: "Invalid credentials" });
       }
       
       // Update last login
-      await storage.updateLastLogin(user.id);
+      const updateDb = await db.update("users");
+      await updateDb
+        .set({ lastLoginAt: new Date().toISOString() })
+        .where({id: user.id})
+        .execute();
       
-      // Return user without password
-      const { password, ...userWithoutPassword } = user;
+      // Set session
+      req.session.userId = user.id;
+      console.log('User logged in:', username, 'ID:', user.id);
       
-      req.session!.userId = user.id;
-      res.status(200).json(userWithoutPassword);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.message });
+      // Ensure stats is parsed as an object if it's a string
+      if (typeof user.stats === 'string') {
+        try {
+          user.stats = JSON.parse(user.stats);
+        } catch (e) {
+          console.error("Error parsing stats JSON:", e);
+          user.stats = {
+            questionsAnswered: 0,
+            correctAnswers: 0,
+            highestStreak: 0,
+            topicsExpertise: {}
+          };
+        }
       }
-      res.status(500).json({ message: "Failed to log in" });
+      
+      // Make sure topicsExpertise exists
+      if (!user.stats || !user.stats.topicsExpertise) {
+        if (!user.stats) user.stats = {};
+        user.stats.topicsExpertise = {};
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      return res.status(200).json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error("Login error:", error);
+      return res.status(500).json({ message: "Error logging in" });
+    }
+  });
+  
+  app.post("/api/logout", (req: Request, res: Response) => {
+    req.session.destroy(() => {});
+    return res.status(200).json({ message: "Logged out successfully" });
+  });
+
+  // Keep backward compatibility with /api/auth/* routes
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      // Check if username exists
+      const selectDb = await db.select("users");
+      const existingUser = await selectDb.from().where({username}).limit(1);
+      
+      if (existingUser.length > 0) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = simpleHash(password);
+      
+      // Insert user
+      const insertDb = await db.insert("users");
+      const newUser = await insertDb.values({
+        username,
+        password: hashedPassword,
+        level: 1,
+        experience: 0,
+        coins: 0,
+        avatarId: "default",
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        stats: JSON.stringify({
+          questionsAnswered: 0,
+          correctAnswers: 0,
+          highestStreak: 0,
+          topicsExpertise: {}
+        })
+      }).returning();
+      
+      // Create initial lifelines for the user
+      if (newUser && newUser.length > 0) {
+        const insertLifelineDb = await db.insert("userLifelines");
+        await insertLifelineDb.values({
+          userId: newUser[0].id,
+          fiftyFifty: 3,
+          askExpert: 3,
+          lastRefreshedAt: new Date().toISOString()
+        }).execute();
+      }
+      
+      return res.status(201).json({ message: "User registered successfully" });
+    } catch (error) {
+      console.error("Registration error:", error);
+      return res.status(500).json({ message: "Error registering user" });
+    }
+  });
+  
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      // Find user
+      const selectDb = await db.select("users");
+      const foundUsers = await selectDb.from().where({username}).limit(1);
+      
+      if (foundUsers.length === 0) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      const user = foundUsers[0];
+      
+      // Special handling for demo users
+      const isDemoUser = ["demo", "beginner", "expert"].includes(username);
+      let isPasswordValid = false;
+      
+      if (isDemoUser && password === "password") {
+        isPasswordValid = true;
+        console.log('Demo user login bypass activated for:', username);
+      } else {
+        // Regular password comparison
+        const hashedPassword = simpleHash(password);
+        isPasswordValid = user.password === hashedPassword;
+      }
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Update last login
+      const updateDb = await db.update("users");
+      await updateDb
+        .set({ lastLoginAt: new Date().toISOString() })
+        .where({id: user.id})
+        .execute();
+      
+      // Set session
+      req.session.userId = user.id;
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      return res.status(200).json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error("Login error:", error);
+      return res.status(500).json({ message: "Error logging in" });
+    }
+  });
+  
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    req.session.destroy(() => {});
+    return res.status(200).json({ message: "Logged out successfully" });
+  });
+
+  // User routes
+  app.get("/api/user/profile", async (req: Request, res: Response) => {
+    // Check if user is logged in
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const selectDb = await db.select("users");
+      const foundUsers = await selectDb.from().where({id: req.session.userId}).limit(1);
+      
+      if (foundUsers.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const user = foundUsers[0];
+      
+      // Ensure stats is parsed as an object if it's a string
+      if (typeof user.stats === 'string') {
+        try {
+          user.stats = JSON.parse(user.stats);
+        } catch (e) {
+          console.error("Error parsing stats JSON:", e);
+          user.stats = {
+            questionsAnswered: 0,
+            correctAnswers: 0,
+            highestStreak: 0,
+            topicsExpertise: {}
+          };
+        }
+      }
+      
+      // Make sure topicsExpertise exists
+      if (!user.stats.topicsExpertise) {
+        user.stats.topicsExpertise = {};
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      return res.status(200).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Get profile error:", error);
+      return res.status(500).json({ message: "Error fetching user profile" });
     }
   });
 
-  app.post("/api/logout", (req, res) => {
-    req.session!.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Failed to log out" });
+  app.get("/api/user/lifelines", async (req: Request, res: Response) => {
+    // Check if user is logged in
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const selectDb = await db.select("userLifelines");
+      const userLifelinesResult = await selectDb.from().where({userId: req.session.userId}).limit(1);
+      
+      if (userLifelinesResult.length === 0) {
+        // Create default lifelines if not found
+        const insertDb = await db.insert("userLifelines");
+        const newLifelines = await insertDb
+          .values({
+            userId: req.session.userId,
+            fiftyFifty: 3,
+            askExpert: 3,
+            lastRefreshedAt: new Date().toISOString()
+          })
+          .returning();
+          
+        return res.status(200).json({
+          fiftyFifty: newLifelines[0].fiftyFifty,
+          askExpert: newLifelines[0].askExpert,
+        });
       }
-      res.status(200).json({ message: "Logged out successfully" });
+      
+      return res.status(200).json({
+        fiftyFifty: userLifelinesResult[0].fiftyFifty,
+        askExpert: userLifelinesResult[0].askExpert,
+      });
+    } catch (error) {
+      console.error("Get lifelines error:", error);
+      return res.status(500).json({ message: "Error fetching lifelines" });
+    }
+  });
+
+  // Game routes
+  app.get("/api/game/questions", (req: Request, res: Response) => {
+    const { difficulty, topic } = req.query;
+    
+    // Filter questions based on query params
+    let filteredQuestions = [...QUESTIONS];
+    
+    if (difficulty) {
+      filteredQuestions = filteredQuestions.filter(q => q.difficulty === difficulty);
+    }
+    
+    if (topic) {
+      filteredQuestions = filteredQuestions.filter(q => q.topic === topic);
+    }
+    
+    return res.status(200).json(filteredQuestions);
+  });
+
+  app.post("/api/game/answer", async (req: Request, res: Response) => {
+    // Check if user is logged in
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const { questionId, answer } = req.body;
+    
+    if (!questionId || answer === undefined) {
+      return res.status(400).json({ message: "Question ID and answer are required" });
+    }
+    
+    // Find the question
+    const question = QUESTIONS.find(q => q.id === questionId);
+    
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" });
+    }
+    
+    // Check if answer is correct
+    const isCorrect = answer === question.correctOption;
+    
+    try {
+      // Record answer in game progress
+      const insertDb = await db.insert("gameProgress");
+      await insertDb.values({
+        userId: req.session.userId,
+        questionId,
+        answeredCorrectly: isCorrect,
+        difficulty: question.difficulty,
+        topic: question.topic,
+        answeredAt: new Date().toISOString()
+      }).execute();
+      
+      // Update user stats if correct
+      if (isCorrect) {
+        const selectDb = await db.select("users");
+        const userResult = await selectDb.from().where({id: req.session.userId}).limit(1);
+        
+        if (userResult.length > 0) {
+          const user = userResult[0];
+          const stats = typeof user.stats === 'string' ? JSON.parse(user.stats) : user.stats;
+          
+          // Update stats
+          stats.questionsAnswered = (stats.questionsAnswered || 0) + 1;
+          stats.correctAnswers = (stats.correctAnswers || 0) + 1;
+          
+          // Update expertise for this topic
+          if (!stats.topicsExpertise) stats.topicsExpertise = {};
+          stats.topicsExpertise[question.topic] = (stats.topicsExpertise[question.topic] || 0) + 1;
+          
+          // Calculate experience and coins based on difficulty
+          let pointsMultiplier = 1;
+          if (question.difficulty === 'intermediate') pointsMultiplier = 2;
+          if (question.difficulty === 'advanced') pointsMultiplier = 3;
+          
+          const experienceGained = 10 * pointsMultiplier;
+          const coinsGained = 5 * pointsMultiplier;
+          
+          // Update user
+          const updateDb = await db.update("users");
+          await updateDb
+            .set({
+              experience: user.experience + experienceGained,
+              coins: user.coins + coinsGained,
+              stats: JSON.stringify(stats)
+            })
+            .where({id: req.session.userId})
+            .execute();
+            
+          return res.status(200).json({
+            correct: true,
+            explanation: question.explanation,
+            pointsEarned: question.points,
+            rewards: {
+              experience: experienceGained,
+              coins: coinsGained
+            }
+          });
+        }
+      }
+      
+      return res.status(200).json({
+        correct: isCorrect,
+        explanation: question.explanation,
+        pointsEarned: isCorrect ? question.points : 0,
+        rewards: isCorrect ? {
+          experience: 10,
+          coins: 5
+        } : null
+      });
+    } catch (error) {
+      console.error("Submit answer error:", error);
+      return res.status(500).json({ message: "Error processing answer" });
+    }
+  });
+
+  // Debug endpoint to check database state (remove in production)
+  app.get("/api/debug/db", (req: Request, res: Response) => {
+    // Only allow in development
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ message: "Not found" });
+    }
+    
+    return res.status(200).json({
+      users: (db as any).getTableData("users").map((user: any) => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      }),
+      userLifelines: (db as any).getTableData("userLifelines"),
+      gameProgress: (db as any).getTableData("gameProgress")
     });
   });
 
-  // User profile routes
-  app.get("/api/user/profile", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    
-    try {
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Get user's unlocked achievements
-      const userAchievements = await storage.getUserAchievements(user.id);
-      
-      // Get user's lifelines
-      const lifelines = await storage.getUserLifelines(user.id);
-      
-      // Calculate experience needed for next level
-      const experienceToNextLevel = user.level * 1000;
-      
-      // Return user profile data
-      const { password, ...userWithoutPassword } = user;
-      res.status(200).json({
-        ...userWithoutPassword,
-        experienceToNextLevel,
-        achievements: userAchievements,
-        lifelines
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user profile" });
-    }
-  });
-
-  // Question routes
-  app.get("/api/questions", (req, res) => {
-    // Return all questions
-    res.status(200).json(questions);
-  });
-
-  app.get("/api/questions/topics", (req, res) => {
-    // Extract unique topics from questions
-    const topics = [...new Set(questions.map(q => q.topic))];
-    res.status(200).json(topics);
-  });
-
-  app.get("/api/questions/by-topic/:topic", (req, res) => {
-    const { topic } = req.params;
-    const topicQuestions = questions.filter(q => q.topic === topic);
-    res.status(200).json(topicQuestions);
-  });
-
-  app.get("/api/questions/by-difficulty/:difficulty", (req, res) => {
-    const { difficulty } = req.params;
-    if (!["beginner", "intermediate", "advanced"].includes(difficulty)) {
-      return res.status(400).json({ message: "Invalid difficulty" });
-    }
-    
-    const difficultyQuestions = questions.filter(q => q.difficulty === difficulty);
-    res.status(200).json(difficultyQuestions);
-  });
-
-  // Game progress routes
-  app.post("/api/game/answer", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    
-    try {
-      const answerData = answerQuestionSchema.parse(req.body);
-      
-      // Find the question
-      const question = questions.find(q => q.id === answerData.questionId);
-      if (!question) {
-        return res.status(404).json({ message: "Question not found" });
-      }
-      
-      // Check if answer is correct
-      const isCorrect = question.correctOptionIndex === answerData.selectedOptionIndex;
-      
-      // Calculate points based on difficulty, time remaining, and lifelines used
-      let points = question.points;
-      if (isCorrect) {
-        // Add time bonus (up to 50% extra)
-        const timeBonus = Math.floor((answerData.timeRemaining / 30) * (question.points * 0.5));
-        points += timeBonus;
-        
-        // Reduce points if lifelines were used
-        if (answerData.usedLifelines.fiftyFifty) points = Math.floor(points * 0.8);
-        if (answerData.usedLifelines.askExpert) points = Math.floor(points * 0.8);
-      } else {
-        points = 0;
-      }
-      
-      // Save game progress
-      await storage.saveGameProgress({
-        userId: req.session.userId,
-        questionId: question.id,
-        answeredCorrectly: isCorrect,
-        difficulty: question.difficulty,
-        topic: question.topic
-      });
-      
-      // Update user's stats
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const stats = user.stats || {
-        questionsAnswered: 0,
-        correctAnswers: 0,
-        highestStreak: 0,
-        topicsExpertise: {}
-      };
-      
-      stats.questionsAnswered++;
-      
-      // Current streak info from client
-      const { streak } = req.body;
-      
-      // Process correct answer
-      if (isCorrect) {
-        stats.correctAnswers++;
-        
-        // Update streak if provided
-        if (typeof streak === 'number' && streak > stats.highestStreak) {
-          stats.highestStreak = streak;
-        }
-        
-        // Update topic expertise
-        if (!stats.topicsExpertise[question.topic]) {
-          stats.topicsExpertise[question.topic] = 0;
-        }
-        stats.topicsExpertise[question.topic] += 1;
-        
-        // Add experience and coins
-        const experienceGained = points;
-        const coinsGained = Math.floor(points / 10);
-        
-        await storage.updateUserRewards(
-          req.session.userId, 
-          experienceGained, 
-          coinsGained,
-          stats
-        );
-        
-        // Check for newly unlocked achievements
-        const unlockedAchievements = await storage.checkAndUnlockAchievements(req.session.userId);
-        
-        res.status(200).json({
-          isCorrect,
-          points,
-          experienceGained,
-          coinsGained,
-          unlockedAchievements
-        });
-      } else {
-        // Just update stats for incorrect answer
-        await storage.updateUserStats(req.session.userId, stats);
-        
-        res.status(200).json({
-          isCorrect,
-          points: 0,
-          experienceGained: 0,
-          coinsGained: 0,
-          unlockedAchievements: []
-        });
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Failed to process answer" });
-    }
-  });
-
-  // Lifelines routes
-  app.post("/api/lifelines/refresh", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    
-    try {
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Check if user has coins to refresh lifelines
-      if (user.coins < 100) {
-        return res.status(400).json({ message: "Not enough coins" });
-      }
-      
-      // Refresh lifelines and deduct coins
-      await storage.refreshLifelines(req.session.userId);
-      await storage.updateUserCoins(req.session.userId, -100);
-      
-      res.status(200).json({ message: "Lifelines refreshed successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to refresh lifelines" });
-    }
-  });
-
-  // Achievements routes
-  app.get("/api/achievements", (req, res) => {
-    res.status(200).json(achievements);
-  });
-
-  // Avatars routes
-  app.get("/api/avatars", (req, res) => {
-    res.status(200).json(avatars);
-  });
-
-  app.post("/api/avatars/purchase/:avatarId", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    
-    const { avatarId } = req.params;
-    
-    try {
-      // Find the avatar
-      const avatar = avatars.find(a => a.id === avatarId);
-      if (!avatar) {
-        return res.status(404).json({ message: "Avatar not found" });
-      }
-      
-      // Check if user has enough coins
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      if (user.coins < avatar.cost) {
-        return res.status(400).json({ message: "Not enough coins" });
-      }
-      
-      // Purchase avatar
-      await storage.purchaseAvatar(req.session.userId, avatarId);
-      await storage.updateUserCoins(req.session.userId, -avatar.cost);
-      
-      res.status(200).json({ message: "Avatar purchased successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to purchase avatar" });
-    }
-  });
-
-  app.post("/api/avatars/select/:avatarId", async (req, res) => {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    
-    const { avatarId } = req.params;
-    
-    try {
-      await storage.selectAvatar(req.session.userId, avatarId);
-      res.status(200).json({ message: "Avatar selected successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to select avatar" });
-    }
-  });
-
-  return httpServer;
-}
+  return server;
+} 

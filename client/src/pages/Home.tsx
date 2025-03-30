@@ -8,14 +8,14 @@ import GameModesSelector from "@/components/GameModesSelector";
 import PlayerProfile from "@/components/PlayerProfile";
 import Achievements from "@/components/Achievements";
 import { Button } from "@/components/ui/button";
-import { GameMode, GameDifficulty } from "@shared/types/game";
+import { GameMode, GameDifficulty, Achievement } from "@shared/types/game";
 
 export default function Home() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
   // Fetch achievements
-  const { data: achievements = [] } = useQuery({
+  const { data: achievements = [] } = useQuery<Achievement[]>({
     queryKey: ['/api/achievements'],
     enabled: isAuthenticated,
   });
@@ -44,8 +44,8 @@ export default function Home() {
         
         {!isAuthenticated && !isLoading ? (
           <div className="card text-center">
-            <h2 className="page-title mb-4">Welcome to CyberQuest Challenge!</h2>
-            <p className="mb-6">Test your cybersecurity knowledge and earn rewards.</p>
+            <h2 className="page-title mb-4">Welcome to Digital Wellness Quest!</h2>
+            <p className="mb-6">Test your digital wellness knowledge and earn rewards.</p>
             <div className="flex justify-center gap-4">
               <button 
                 onClick={() => navigate("/login")}
@@ -69,11 +69,11 @@ export default function Home() {
               
               {/* Game Information */}
               <div className="card">
-                <h2 className="text-xl font-semibold mb-4">About CyberQuest Challenge</h2>
+                <h2 className="text-xl font-semibold mb-4">About Digital Wellness Quest</h2>
                 <p className="mb-4">
-                  Test your cybersecurity knowledge with interactive quizzes on various topics including phishing, 
-                  password security, privacy settings, and more. Learn essential online safety skills while competing 
-                  for points and achievements.
+                  Test your digital wellness knowledge with interactive quizzes on various topics including internet safety, 
+                  cyberbullying, digital footprint management, screen time balance, and more. Learn essential skills for 
+                  healthy technology use while competing for points and achievements.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div className="card">
@@ -83,7 +83,7 @@ export default function Home() {
                       <li>Answer questions within time limit</li>
                       <li>Use lifelines when needed</li>
                       <li>Earn points and achievements</li>
-                      <li>Level up your cybersecurity expertise</li>
+                      <li>Level up your digital wellness expertise</li>
                     </ul>
                   </div>
                   <div className="card">

@@ -58,8 +58,40 @@ export default function Achievements({ achievements }: AchievementsProps) {
                   {achievement.icon === 'star' && (
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                   )}
+                  {achievement.icon === 'shield-check' && (
+                    <>
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                      <path d="M9 12l2 2 4-4"></path>
+                    </>
+                  )}
+                  {achievement.icon === 'fingerprint' && (
+                    <>
+                      <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"></path>
+                      <path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"></path>
+                      <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"></path>
+                      <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"></path>
+                      <path d="M8.65 22c.21-.66.45-1.32.57-2"></path>
+                      <path d="M14 13.12c0 2.38 0 6.38-1 8.88"></path>
+                      <path d="M2 16h.01"></path>
+                    </>
+                  )}
+                  {achievement.icon === 'clock' && (
+                    <>
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </>
+                  )}
+                  {achievement.icon === 'heart' && (
+                    <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"></path>
+                  )}
+                  {achievement.icon === 'leaf' && (
+                    <>
+                      <path d="M11 20A7 7 0 0 1 4 13c0-5 3-7 6-8 3 1 6 3 6 8a7 7 0 0 1-5 7"></path>
+                      <path d="M6 16c3 6 9 2 9-4"></path>
+                    </>
+                  )}
                   {/* Default icon if none matches */}
-                  {!['shield-alt', 'fire', 'fish', 'medal', 'key', 'user-graduate', 'star'].includes(achievement.icon) && (
+                  {!['shield-alt', 'fire', 'fish', 'medal', 'key', 'user-graduate', 'star', 'shield-check', 'fingerprint', 'clock', 'heart', 'leaf'].includes(achievement.icon) && (
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   )}
                 </svg>

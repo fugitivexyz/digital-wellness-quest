@@ -12,8 +12,16 @@ export default function PlayerProfile({ userProfile, avatars }: PlayerProfilePro
   const userAvatarId = userProfile.avatarId || "default";
   const userAvatar = avatars.find(a => a.id === userAvatarId);
   
+  // Ensure stats exists and has default values
+  const stats = userProfile.stats || {
+    questionsAnswered: 0,
+    correctAnswers: 0,
+    highestStreak: 0,
+    topicsExpertise: {}
+  };
+  
   // Get topic expertise data
-  const topicsExpertise = userProfile.stats.topicsExpertise;
+  const topicsExpertise = stats.topicsExpertise || {};
   const topicsData = Object.entries(topicsExpertise).map(([topic, count]) => {
     const { level, percentage } = getTopicLevel(count);
     return { topic, level, percentage };
@@ -43,7 +51,7 @@ export default function PlayerProfile({ userProfile, avatars }: PlayerProfilePro
             />
           </div>
           <h2 className="font-semibold text-xl text-black">{userProfile.username}</h2>
-          <p className="text-black text-sm">Level {userProfile.level} • Security Specialist</p>
+          <p className="text-black text-sm">Level {userProfile.level} • Digital Wellness Guide</p>
         </div>
       </div>
       
@@ -52,18 +60,18 @@ export default function PlayerProfile({ userProfile, avatars }: PlayerProfilePro
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="text-center">
             <div className="text-2xl font-medium">
-              {userProfile.stats.questionsAnswered > 0 
-                ? Math.round((userProfile.stats.correctAnswers / userProfile.stats.questionsAnswered) * 100)
+              {stats.questionsAnswered > 0 
+                ? Math.round((stats.correctAnswers / stats.questionsAnswered) * 100)
                 : 0}%
             </div>
             <div className="text-xs text-gray-600">Accuracy</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-medium">{userProfile.stats.questionsAnswered}</div>
+            <div className="text-2xl font-medium">{stats.questionsAnswered}</div>
             <div className="text-xs text-gray-600">Questions</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-medium">{userProfile.stats.highestStreak}</div>
+            <div className="text-2xl font-medium">{stats.highestStreak}</div>
             <div className="text-xs text-gray-600">Best Streak</div>
           </div>
         </div>

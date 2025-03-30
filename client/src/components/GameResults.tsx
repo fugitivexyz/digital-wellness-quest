@@ -18,16 +18,16 @@ export default function GameResults({ score, questionsAnswered, maxStreak, onPla
   let performanceIcon = "";
   
   if (percentCorrect >= 90) {
-    performanceMessage = "Cybersecurity Expert";
+    performanceMessage = "Digital Wellness Expert";
     performanceIcon = "trophy";
   } else if (percentCorrect >= 70) {
-    performanceMessage = "Security Specialist";
+    performanceMessage = "Wellness Champion";
     performanceIcon = "shield";
   } else if (percentCorrect >= 50) {
-    performanceMessage = "Digital Defender";
+    performanceMessage = "Digital Balance Keeper";
     performanceIcon = "lock";
   } else {
-    performanceMessage = "Security Rookie";
+    performanceMessage = "Wellness Beginner";
     performanceIcon = "user";
   }
 
@@ -94,10 +94,10 @@ export default function GameResults({ score, questionsAnswered, maxStreak, onPla
         <div className="card mb-6">
           <p className="text-sm">
             {percentCorrect >= 80
-              ? "Outstanding! You've demonstrated excellent cybersecurity knowledge. Keep challenging yourself to become even better!"
+              ? "Outstanding! You've demonstrated excellent digital wellness knowledge. Keep challenging yourself to become even better!"
               : percentCorrect >= 60
-              ? "Good job! You have solid cybersecurity awareness. Review the explanations on questions you missed to strengthen your knowledge."
-              : "Keep learning! Cybersecurity is a journey. Review the explanations for questions you missed and try again to improve your score."}
+              ? "Good job! You have solid digital wellness awareness. Review the explanations on questions you missed to strengthen your knowledge."
+              : "Keep learning! Digital wellness is a journey. Review the explanations for questions you missed and try again to improve your score."}
           </p>
         </div>
         

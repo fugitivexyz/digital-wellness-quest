@@ -16,10 +16,11 @@ export default function Header({ userProfile }: HeaderProps) {
         <div className="flex items-center mb-4 md:mb-0">
           <div className="w-12 h-12 bg-[#F8D000] border-2 border-black flex items-center justify-center mr-3">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2z"/>
+              <path d="M12 6v6l4 2"/>
             </svg>
           </div>
-          <h1 className="font-bold text-3xl md:text-4xl text-black">Cyber<span className="text-[#F8D000]">Quest</span></h1>
+          <h1 className="font-bold text-3xl md:text-4xl text-black">Digital<span className="text-[#F8D000]">Wellness</span></h1>
         </div>
         
         <div className="flex items-center space-x-4">
